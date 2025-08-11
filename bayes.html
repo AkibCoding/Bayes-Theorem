@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bayes' Theorem Simulator</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Inter font -->
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap">
+</head>
+<body>
+    <div id="root"></div>
+
+    <!-- React and ReactDOM libraries -->
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <!-- Babel for JSX compilation -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+    <script type="text/babel">
+        const { useState, useEffect } = React;
+
+        // Main App component for the Bayes' Theorem simulator
+        function App() {
+          // State for the prior probability P(Rain)
+          const [pRain, setPRain] = useState(0.3); // Let A = Rain
+          // State for the total probability of evidence P(Cloudy)
+          const [pCloudy, setPCloudy] = useState(0.4); // Let B = Cloudy
+          // State for the likelihood P(Cloudy|Rain)
+          const [pCloudyGivenRain, setPCloudyGivenRain] = useState(0.8); // Let B|A = Cloudy|Rain
+          // State for the calculated posterior probability P(Rain|Cloudy)
+          const [pRainGivenCloudy, setPRainGivenCloudy] = useState(0);
+          
+          // State to track if the inputs are logically inconsistent
+          const [inputError, setInputError] = useState(false);
+
+          // States to display calculation steps
+          const [numerator, setNumerator] = useState(0);
+          const [denominator, setDenominator] = useState(0);
+
+          // useEffect hook to run the calculation whenever the input probabilities change
+          useEffect(() => {
+            // Check for logical inconsistency: P(Cloudy) must be >= P(Cloudy|Rain) * P(Rain)
+            const calculatedNumerator = pCloudyGivenRain * pRain;
+            
+            if (pCloudy < calculatedNumerator) {
+              // Inputs are logically inconsistent
+              setInputError(true);
+              setPRainGivenCloudy(0);
+              setNumerator(calculatedNumerator);
+              setDenominator(pCloudy);
+              return; // Stop further calculation
+            }
+
+            // If inputs are valid, clear the error and proceed
+            setInputError(false);
+            
+            // We need P(Cloudy | Not Rain) for the full calculation. We can derive it from the other inputs.
+            const pNotRain = 1 - pRain;
+            let pCloudyGivenNotRain = 0;
+            if (pNotRain > 0) {
+              const num = pCloudy - calculatedNumerator;
+              pCloudyGivenNotRain = num / pNotRain;
+            }
+
+            // 1. Calculate the numerator of Bayes' Theorem
+            setNumerator(calculatedNumerator);
+
+            // 2. Denominator is simply P(Cloudy)
+            const calculatedDenominator = pCloudy;
+            setDenominator(calculatedDenominator);
+
+            // 3. Apply the general Bayes' Theorem formula: P(Rain|Cloudy) = Numerator / Denominator
+            let calculatedPRainGivenCloudy = 0;
+            if (calculatedDenominator > 0) { // Avoid division by zero
+              calculatedPRainGivenCloudy = calculatedNumerator / calculatedDenominator;
+            }
+
+            // Update the state with the new calculated value, rounded for display
+            setPRainGivenCloudy(Math.round(calculatedPRainGivenCloudy * 100));
+
+          }, [pRain, pCloudy, pCloudyGivenRain]); // Dependencies for the effect
+
+          // Determine the background and animation based on the calculated probability
+          const isRainy = pRainGivenCloudy > 50;
+
+          return (
+            <div 
+              className={`min-h-screen flex flex-col items-center justify-center p-4 transition-all duration-1000 ease-in-out ${isRainy ? 'bg-slate-700 text-white' : 'bg-blue-300 text-gray-800'}`}
+              style={{
+                fontFamily: 'Inter, sans-serif'
+              }}
+            >
+              {/* Title and description */}
+              <div className="text-center mb-8">
+                <h1 className="text-4xl sm:text-5xl font-bold mb-2">Bayes' Theorem Simulator</h1>
+                <p className="text-lg sm:text-xl font-medium">What is the chance of rain, given it's cloudy?</p>
+              </div>
+
+              {/* Main content container */}
+              <div className="bg-white/20 backdrop-blur-lg shadow-2xl rounded-3xl p-6 sm:p-10 w-full max-w-2xl">
+                
+                {/* Sliders for user input */}
+                <div className="space-y-6 mb-8">
+                  
+                  {/* Prior Probability P(Rain) */}
+                  <div>
+                    <label className="block text-sm font-medium mb-1">
+                      P(Rain): Prior probability of rain
+                    </label>
+                    <div className="flex items-center space-x-4">
+                      <input 
+                        type="range"
+                        min="0"
+                        max="1"
+                        step="0.01"
+                        value={pRain}
+                        onChange={(e) => setPRain(Number(e.target.value))}
+                        className="w-full h-2 bg-slate-300 rounded-lg appearance-none cursor-pointer"
+                      />
+                      <span className="text-sm font-medium w-12 text-right">{Math.round(pRain * 100)}%</span>
+                    </div>
+                  </div>
+                  
+                  {/* Total Probability of Evidence P(Cloudy) */}
+                  <div>
+                    <label className="block text-sm font-medium mb-1">
+                      P(Cloudy): Total probability of clouds
+                    </label>
+                    <div className="flex items-center space-x-4">
+                      <input 
+                        type="range"
+                        min="0"
+                        max="1"
+                        step="0.01"
+                        value={pCloudy}
+                        onChange={(e) => setPCloudy(Number(e.target.value))}
+                        className="w-full h-2 bg-slate-300 rounded-lg appearance-none cursor-pointer"
+                      />
+                      <span className="text-sm font-medium w-12 text-right">{Math.round(pCloudy * 100)}%</span>
+                    </div>
+                  </div>
+
+                  {/* Likelihood P(Cloudy|Rain) */}
+                  <div>
+                    <label className="block text-sm font-medium mb-1">
+                      P(Cloudy | Rain): Probability of clouds given it's raining
+                    </label>
+                    <div className="flex items-center space-x-4">
+                      <input 
+                        type="range"
+                        min="0"
+                        max="1"
+                        step="0.01"
+                        value={pCloudyGivenRain}
+                        onChange={(e) => setPCloudyGivenRain(Number(e.target.value))}
+                        className="w-full h-2 bg-slate-300 rounded-lg appearance-none cursor-pointer"
+                      />
+                      <span className="text-sm font-medium w-12 text-right">{Math.round(pCloudyGivenRain * 100)}%</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Display of the final calculated probability */}
+                <div className="bg-white/30 rounded-2xl p-4 mb-8">
+                  <p className="text-sm font-medium mb-1">
+                    Bayes' Theorem Calculation
+                  </p>
+                  <div className="text-sm font-mono leading-relaxed">
+                    <p className="mb-2">
+                      P(Rain | Cloudy) = (P(Cloudy | Rain) * P(Rain)) / P(Cloudy)
+                    </p>
+                    {inputError ? (
+                        <p className="text-red-400 font-bold">
+                            Error: P(Cloudy) must be greater than or equal to P(Cloudy | Rain) * P(Rain). Please adjust your inputs.
+                        </p>
+                    ) : (
+                        <p>
+                            P(Rain | Cloudy) = ({pCloudyGivenRain.toFixed(2)} * {pRain.toFixed(2)}) / {pCloudy.toFixed(2)} = {(pRainGivenCloudy / 100).toFixed(4)}
+                        </p>
+                    )}
+                  </div>
+                </div>
+
+                <div className="bg-white/30 rounded-2xl p-4 text-center">
+                  <p className="text-sm font-medium mb-1">
+                    Final Calculated Probability
+                  </p>
+                  <div className="flex items-center justify-center space-x-4">
+                    <span className="text-3xl sm:text-4xl font-bold">P(Rain | Cloudy) = {pRainGivenCloudy}%</span>
+                    {/* Conditional emoji/icon for weather animation */}
+                    <span className="text-4xl sm:text-5xl animate-pulse">
+                      {isRainy ? '🌧️' : '☀️'}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          );
+        }
+
+        // Render the App component into the root div
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
